@@ -1,95 +1,103 @@
 # AWS Static Website Hosting and Monitoring
 
-In this project, I built a static website using AWS services. I used two EC2 instances, Amazon S3, Nginx, and the AWS CLI to set up the website. I also added CPU monitoring with CloudWatch and email alerts using Amazon SNS.
+In this project, I built a simple static website using AWS. I used two EC2 instances, an S3 bucket, Nginx and the AWS CLI. I also added CPU monitoring with CloudWatch and email notifications with Amazon SNS.
 
-> **Project status:** Completed in May 2026 as part of an AWS Learner Lab course. This is a learning project, not a production website or a currently running service.
+**Project:** AWS Learner Lab course project, May 2026  
+**Status:** Completed learning project; the website is not currently running.
 
-## Architecture
+## Phase 1 — Hosting a static website
 
-```mermaid
-flowchart LR
-    Admin[Administrator] -->|SSH, port 22| Bastion[EC2 Bastion Host]
-    Bastion -->|AWS CLI: create resources| AWS[AWS resources]
-    Bastion -->|Upload index.html| S3[(Amazon S3 bucket)]
-    S3 -->|Copy website file at startup| Web[EC2 Web Server / Nginx]
-    Visitor[Web browser] -->|HTTP, port 80| Web
-    Web -->|CPU usage| CW[CloudWatch alarm]
-    CW -->|Trigger alert| SNS[Amazon SNS]
-    SNS -->|Email| Subscriber[Subscriber]
-```
+### 1. Planning the environment
 
-I used two EC2 instances in the default VPC and subnet of the lab environment. The first instance was a **bastion host**, which I used to manage AWS resources through SSH and the AWS CLI. The second instance was a **web server** running Nginx.
+I planned an environment with two EC2 instances and one S3 bucket:
 
-The HTML file was stored in an S3 bucket and copied to the web server during setup. **The website was hosted by Nginx on EC2, not directly by S3.**
+- **Bastion Host:** I connected to this instance using SSH and used the AWS CLI to manage AWS resources.
+- **S3 bucket:** I stored the website's `index.html` file here.
+- **Web Server:** This instance ran Nginx and copied the HTML file from S3 into its web root.
 
-## Technologies used
+I used the lab's default VPC and subnet. The bastion host allowed SSH traffic on port 22, while the web server allowed HTTP traffic on port 80.
 
-- **AWS:** EC2, S3, IAM instance profile (`LabInstanceProfile`), VPC security groups, CloudWatch, SNS
-- **Operating system and web server:** Amazon Linux 2023, Nginx
-- **Tools:** AWS CLI, SSH/PuTTY, Bash, EC2 user data
-- **AWS Region:** `us-east-1`
+![Original Phase 1 architecture diagram](images/phase1-architecture.png)
 
-## What I did
+*Figure 1. My original architecture diagram from the project report.*
 
-### Phase 1 — Set up the website
+### 2. Creating the bastion host
 
-1. I found the default VPC and created separate security groups for the two EC2 instances.
-2. I launched a bastion host and connected to it using SSH.
-3. I created an S3 bucket and uploaded an `index.html` file using the AWS CLI.
-4. I launched a web server with a user data script. The script installed Nginx and AWS CLI, copied the HTML file from S3 to `/usr/share/nginx/html`, and started Nginx.
-5. I opened the web server's public IP address in a browser and confirmed that the website worked.
+I used AWS CloudShell and the AWS CLI to find the VPC ID, create a security group and launch an Amazon Linux 2023 EC2 instance. I attached the lab's `LabInstanceProfile` IAM instance profile and connected to the bastion host using PuTTY and SSH.
 
-### Phase 2 — Add monitoring
+### 3. Creating the HTML page and storing it in S3
 
-1. I created an SNS topic and subscribed to email notifications.
-2. I created a CloudWatch alarm to monitor the web server's CPU usage. The alarm was set to trigger when the average CPU usage was **above 70% for two consecutive one-minute periods**.
-3. I generated temporary CPU load to test the alarm. It changed to `ALARM`, and I received an email notification.
-4. I stopped the CPU load and checked that the alarm returned to `OK`.
+I created an S3 bucket in `us-east-1`. On the bastion host, I used `nano` to write a simple `index.html` page and uploaded it to S3 using the AWS CLI. I also listed the bucket contents to check that the upload worked.
 
-## How I tested the project
+The screenshot below shows **part of my original HTML code**. I no longer have the complete source file, so I am sharing the original screenshot rather than recreating the code.
 
-I checked each part of the setup:
+![Screenshot showing part of the original HTML source code](images/html-source.png)
 
-- I connected to the bastion host with SSH.
-- I confirmed that the HTML file was stored in S3.
-- I opened the website in a browser and checked that Nginx displayed the page.
-- I tested the CloudWatch alarm by increasing CPU usage and checking the email notification.
-- I confirmed that the alarm returned to `OK` after the test.
+*Figure 2. The HTML file I created for the test website.*
 
-My original report includes screenshots of these steps. I have **not uploaded the original PDF** because one screenshot contains AWS access credentials and session information. I may add screenshots with sensitive details removed later.
+### 4. Setting up the Nginx web server
 
-## Security notes
+I created a second security group with inbound HTTP access on port 80. Then I wrote a user data script for the web server. It updated packages, installed Nginx and the AWS CLI, copied the HTML file from S3 into `/usr/share/nginx/html`, and started and enabled Nginx.
 
-This project was made in a learning environment. I would make several changes before using a similar setup in production:
+![Original screenshot of the Nginx setup script](images/nginx-user-data.png)
 
-- **SSH access:** During the lab, port 22 was open to `0.0.0.0/0`. In a real environment, I would limit SSH access or use AWS Systems Manager Session Manager.
-- **HTTPS:** The website used HTTP on port 80. A public website should use HTTPS.
-- **Network design:** Both EC2 instances used the default subnet. A more secure design could use separate public and private subnets and a load balancer.
-- **IAM permissions:** I used the lab's existing IAM instance profile. In a real environment, I would give each instance only the permissions it needs.
-- **Secrets:** AWS credentials, session tokens, and private keys should never be uploaded to GitHub.
+*Figure 3. The user data script used to configure the web server.*
+
+I launched the web server EC2 instance with this script and the lab IAM instance profile. The website was served by **Nginx on EC2**; S3 was used to store the source file.
+
+### 5. Testing the website
+
+Finally, I opened the web server's public IP address in a browser. The page displayed the text **“Nginx toimii!”**, confirming that the web server was working and serving my HTML page.
+
+![Original browser screenshot showing the working website](images/website-working.png)
+
+*Figure 4. The website running in the browser.*
+
+## Phase 2 — Monitoring and email alerts
+
+### 6. Creating an SNS email subscription
+
+I created an SNS topic named `cpu-alerts`, subscribed my email address and confirmed the subscription. This allowed CloudWatch to send an email when an alarm was triggered.
+
+### 7. Configuring a CloudWatch alarm
+
+I created the `High-CPU-WebServer` CloudWatch alarm to monitor the web server's `CPUUtilization` metric. I set the threshold to **above 70% for two consecutive 60-second periods** and connected the alarm to the SNS topic.
+
+### 8. Testing the alarm
+
+To test the alarm, I temporarily enabled SSH access to the web server and connected to it. I ran `yes > /dev/null &` twice to generate CPU load. The CloudWatch alarm changed to **ALARM**, and SNS sent an email notification.
+
+![Original screenshot of the SNS email notification](images/cloudwatch-alarm-email.png)
+
+*Figure 5. The SNS notification received after the CPU alarm was triggered.*
+
+I then stopped the load with `killall yes`. After a few minutes, I checked the alarm again and confirmed that it had returned to **OK**.
+
+![Original terminal screenshot showing the alarm back in OK state](images/cloudwatch-recovered-ok.png)
+
+*Figure 6. CloudWatch alarm returned to OK after the test.*
 
 ## What I learned
 
-This project helped me understand how AWS services work together. I gained practical experience with:
+This project gave me practical experience with:
 
-- Creating and managing EC2 instances using the AWS CLI
-- Setting up security groups and IAM instance profiles
-- Storing website files in S3
-- Installing and starting Nginx automatically with a user data script
-- Monitoring an EC2 instance with CloudWatch
-- Sending email alerts with SNS
-- Testing and troubleshooting an AWS environment
+- Creating EC2 instances and security groups using the AWS CLI
+- Connecting to Linux instances using SSH
+- Storing and checking files in Amazon S3
+- Automating web server setup with EC2 user data
+- Hosting a static website with Nginx
+- Monitoring CPU usage with CloudWatch and sending alerts with SNS
+- Testing my setup and checking the results
 
-## What I would improve next
+## Security and future improvements
 
-These are ideas for future work, **not features I have already implemented**:
+This was a **Learner Lab exercise**, not a production setup. During the lab, SSH was allowed from `0.0.0.0/0`, and the website used HTTP instead of HTTPS. For a real environment, I would restrict SSH access, use HTTPS, review IAM permissions and separate public and private network resources.
 
-- Move the web server to a private subnet and use a public load balancer
-- Add HTTPS and improve security group rules
-- Use Terraform or CloudFormation to create the infrastructure
-- Add more monitoring and logging
+In my original report, I suggested a private subnet for the web server, a public load balancer and possible automatic scaling. These were **ideas for future improvements**, not features implemented in this project.
 
-## Repository files
+## More information
 
-- [`docs/implementation.md`](docs/implementation.md) — More detailed notes about the setup and testing
-- [`scripts/nginxinstall.sh`](scripts/nginxinstall.sh) — An example user data script based on the lab setup, with sensitive information removed
+- [Implementation notes](docs/implementation.md)
+- [Example Nginx user data script](scripts/nginxinstall.sh) — a sanitized example, not an exact copy of the original deployed script
+
+The images above come from my original May 2026 project report. The original PDF is not published because it contains AWS credentials in one screenshot.
