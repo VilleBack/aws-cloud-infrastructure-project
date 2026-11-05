@@ -5,6 +5,8 @@ In this project, I built a simple static website using AWS. I used two EC2 insta
 **Project:** AWS Learner Lab course project, May 2026  
 **Status:** Completed learning project; the website is not currently running.
 
+For the actual AWS CLI commands I used, see [**AWS CLI implementation notes**](docs/implementation.md). The commands are taken from my original report, with environment-specific values replaced by placeholders.
+
 ## Phase 1 — Hosting a static website
 
 ### 1. Planning the environment
@@ -25,9 +27,17 @@ I used the lab's default VPC and subnet. The bastion host allowed SSH traffic on
 
 I used AWS CloudShell and the AWS CLI to find the VPC ID, create a security group and launch an Amazon Linux 2023 EC2 instance. I attached the lab's `LabInstanceProfile` IAM instance profile and connected to the bastion host using PuTTY and SSH.
 
+For example, I used `aws ec2 run-instances` to launch the EC2 instances. The complete command, including the AMI, security group, SSH key and IAM profile options, is in the [implementation notes](docs/implementation.md).
+
 ### 3. Creating the HTML page and storing it in S3
 
 I created an S3 bucket in `us-east-1`. On the bastion host, I used `nano` to write a simple `index.html` page and uploaded it to S3 using the AWS CLI. I also listed the bucket contents to check that the upload worked.
+
+```bash
+aws s3 cp index.html s3://<your-bucket-name>/
+```
+
+*Command from my original report; the bucket name has been replaced with a placeholder.*
 
 The screenshot below shows **part of my original HTML code**. I no longer have the complete source file, so I am sharing the original screenshot rather than recreating the code.
 
