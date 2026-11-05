@@ -1,0 +1,12 @@
+# Credentials and keys
+.env
+.env.*
+*.pem
+*.ppk
+*.key
+.aws/
+credentials
+
+# Local files
+.DS_Store
+__pycache__/
